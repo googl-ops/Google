@@ -2,204 +2,113 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سدرة المعنى - إنتاج مرئي</title>
+    <title>سدرة المعنى - إنتاج شعري</title>
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
-    
     <style>
-        :root {
-            --gold: #d4af37;
-            --dark: #0a0a0a;
-        }
-
-        body {
-            margin: 0;
-            background: var(--dark);
-            color: var(--gold);
-            font-family: 'Amiri', serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-
-        /* حاوية العرض */
-        #render-container {
-            position: relative;
-            width: 90vw;
-            max-width: 1000px;
-            aspect-ratio: 16 / 9;
-            background: #000;
-            border: 2px solid #222;
-            box-shadow: 0 0 50px rgba(0,0,0,1);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        /* واجهة الأزرار */
-        .toolbar {
-            margin-top: 25px;
-            display: flex;
-            gap: 15px;
-            z-index: 100;
-        }
-
-        button {
-            background: rgba(212, 175, 55, 0.1);
-            color: var(--gold);
-            border: 1px solid var(--gold);
-            padding: 12px 30px;
-            font-family: 'Aref Ruqaa', serif;
-            font-size: 1.1rem;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: 0.4s;
-            backdrop-filter: blur(5px);
-        }
-
-        button:hover:not(:disabled) {
-            background: var(--gold);
-            color: #000;
-            box-shadow: 0 0 20px var(--gold);
-        }
-
-        button:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        #status-bar {
-            margin-top: 15px;
-            font-size: 0.9rem;
-            color: #666;
-            letter-spacing: 1px;
-        }
+        body { margin: 0; background: #000; font-family: 'Amiri', serif; color: #d4af37; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        #canvas-wrapper { position: relative; width: 854px; height: 480px; border: 2px solid #333; box-shadow: 0 0 50px #000; }
+        canvas { width: 100%; height: 100%; }
+        .controls { margin-top: 20px; display: flex; gap: 15px; }
+        button { background: rgba(212, 175, 55, 0.1); color: #d4af37; border: 1px solid #d4af37; padding: 10px 25px; cursor: pointer; border-radius: 5px; font-family: 'Aref Ruqaa', serif; transition: 0.3s; }
+        button:hover:not(:disabled) { background: #d4af37; color: #000; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        #status { margin-top: 10px; font-size: 0.8rem; color: #777; }
     </style>
 </head>
 <body>
 
-    <div id="render-container">
-        <canvas id="outputCanvas"></canvas>
-    </div>
+<div id="canvas-wrapper">
+    <canvas id="mainCanvas"></canvas>
+</div>
 
-    <div class="toolbar">
-        <button id="playBtn">عرض اللحن والكلمات</button>
-        <button id="recordBtn" disabled>تسجيل وتحميل الفيديو</button>
-        <button id="stopBtn" disabled>حفظ الملف النهائي</button>
-    </div>
+<div class="controls">
+    <button id="playBtn">▶ تشغيل العرض</button>
+    <button id="recordBtn" disabled>● تسجيل وتحميل الفيديو</button>
+</div>
 
-    <div id="status-bar">جاهز لبدء الإنتاج..</div>
+<div id="status">جاهز.. تأكدي من رفع "audio.mp3" في نفس المجلد</div>
 
-    <script>
-        const canvas = document.getElementById('outputCanvas');
-        const ctx = canvas.getContext('2d');
-        const playBtn = document.getElementById('playBtn');
-        const recordBtn = document.getElementById('recordBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const status = document.getElementById('status-bar');
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const playBtn = document.getElementById('playBtn');
+    const recordBtn = document.getElementById('recordBtn');
+    const status = document.getElementById('status');
 
-        canvas.width = 1920; // جودة Full HD
-        canvas.height = 1080;
+    canvas.width = 1280;
+    canvas.height = 720;
 
-        // المصادر - تأكدي أن الملف في GitHub بهذا الاسم تماماً
-        const audio = new Audio('audio.mp3'); 
-        const videoBg = document.createElement('video');
-        videoBg.src = 'https://googleusercontent.com/generated_video_content/9774772318935628471';
-        videoBg.crossOrigin = "anonymous";
-        videoBg.loop = true;
+    // الربط مع الملف المرفوع في GitHub
+    const audio = new Audio('audio.mp3'); 
+    const videoBg = document.createElement('video');
+    videoBg.src = 'https://googleusercontent.com/generated_video_content/9774772318935628471';
+    videoBg.crossOrigin = "anonymous";
+    videoBg.loop = true;
 
-        const lyrics = [
-            { time: 0, text: "سدرة المعنى" },
-            { time: 71, text: "أَنَا الظِّلُّ الْمُسَافِرُ فِي رِكَابِكْ\nيُبَعْثِرُنِي الْحَنِينُ عَلَى تُرَابِكْ" },
-            { time: 85, text: "تَسَاقَطَ فِي الْمَدَى مِنِّي فُؤَادِي\nكَفِيفاً مِثْلَ لَيْلٍ فِي عِتَابِكْ" },
-            { time: 98, text: "تَعَتَّقَ فِيكَ وِجْدَانِي قَدِيماً\nلِيَبْلُغَ سِدْرَةَ الْمَعْنَى بِبَابِكْ" },
-            { time: 112, text: "عَشِقْتُكَ وَالْكُؤُوسُ تَضِجُّ شَوْقاً\nفَصِرْتُ الْخَمْرَ يُعْصَرُ فِي شَرَابِكْ" },
-            { time: 126, text: "خَلَعْتُ الْوَعْيَ كَالْأَثْوَابِ عَنِّي\nفَأَلْبِسْنِي يَقِيناً.. مِنْ كِتَابِكْ" },
-            { time: 140, text: "وَصُغْنِي \"خَاتَماً\" بِيَدَيْكَ وَامْسَحْ\nنُقُوشِي كَيْ أَذُوبَ مَعَ انْسِكَابِكْ" },
-            { time: 264, text: "فَهَلْ يَا سَيِّدَ الْمَعْنَى قَبُولٌ؟\nلِضَيْفٍ حَلَّ شَوْقاً فِي شِعَابِكْ" }
-        ];
+    const lyrics = [
+        { time: 0, text: "سدرة المعنى" },
+        { time: 71, text: "أَنَا الظِّلُّ الْمُسَافِرُ فِي رِكاَبِكْ\nيُبَعْثِرُنِي الْحَنِينُ عَلَى تُرَابِكْ" },
+        { time: 85, text: "تَسَاقَطَ فِي الْمَدَى مِنِّي فُؤَادِي\nكَفِيفاً مِثْلَ لَيْلٍ فِي عِتَابِكْ" },
+        { time: 98, text: "تَعَتَّقَ فِيكَ وِجْدَانِي قَدِيماً\nلِيَبْلُغَ سِدْرَةَ الْمَعْنَى بِبَابِكْ" },
+        { time: 112, text: "عَشِقْتُكَ وَالْكُؤُوسُ تَضِجُّ شَوْقاً\nفَصِرْتُ الْخَمْرَ يُعْصَرُ فِي شَرَابِكْ" },
+        { time: 126, text: "خَلَعْتُ الْوَعْيَ كَالْأَثْوَابِ عَنِّي\nفَأَلْبِسْنِي يَقِيناً.. مِنْ كِتَابِكْ" },
+        { time: 140, text: "وَصُغْنِي \"خَاتَماً\" بِيَدَيْكَ وَامْسَحْ\nنُقُوشِي كَيْ أَذُوبَ مَعَ انْسِكَابِكْ" },
+        { time: 153, text: "أُقَامِرُ بِالْخُلُودِ وَلَسْتُ أَبْغِي\nجِنَاناً بَلْ مَقَاماً فِي جَنَابِكْ" },
+        { time: 264, text: "فَهَلْ يَا سَيِّدَ الْمَعْنَى قَبُولٌ؟\nلِضَيْفٍ حَلَّ شَوْقاً فِي شِعَابِكْ" }
+    ];
 
-        let recorder;
-        let chunks = [];
+    let recorder;
+    let chunks = [];
 
-        function renderFrame() {
-            // رسم الفيديو الخلفي مع تأثير سينمائي
-            ctx.drawImage(videoBg, 0, 0, canvas.width, canvas.height);
-            
-            // إضافة طبقة تظليل ناعمة لبروز النص
-            let gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 100, canvas.width/2, canvas.height/2, 1000);
-            gradient.addColorStop(0, 'rgba(0,0,0,0.2)');
-            gradient.addColorStop(1, 'rgba(0,0,0,0.8)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function draw() {
+        ctx.drawImage(videoBg, 0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(0,0, canvas.width, canvas.height);
 
-            const now = audio.currentTime;
-            const current = [...lyrics].reverse().find(l => now >= l.time);
-
-            if (current) {
-                ctx.textAlign = "center";
-                ctx.fillStyle = "#d4af37";
-                ctx.shadowBlur = 30;
-                ctx.shadowColor = "rgba(0,0,0,1)";
-                
-                ctx.font = "bold 80px 'Amiri'";
-                const lines = current.text.split('\n');
-                lines.forEach((line, i) => {
-                    ctx.fillText(line, canvas.width/2, canvas.height/2 + (i * 110));
-                });
-            }
-            requestAnimationFrame(renderFrame);
+        const current = [...lyrics].reverse().find(l => audio.currentTime >= l.time);
+        if (current) {
+            ctx.font = "bold 60px 'Amiri'";
+            ctx.fillStyle = "#d4af37";
+            ctx.textAlign = "center";
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "black";
+            current.text.split('\n').forEach((line, i) => {
+                ctx.fillText(line, canvas.width/2, canvas.height/2 + (i * 80));
+            });
         }
+        requestAnimationFrame(draw);
+    }
 
-        playBtn.onclick = () => {
-            audio.play();
-            videoBg.play();
-            renderFrame();
-            playBtn.disabled = true;
-            recordBtn.disabled = false;
-            status.innerText = "العرض يعمل.. اضغط 'تسجيل' لحفظ الفيديو النهائي";
-        };
+    playBtn.onclick = () => {
+        audio.play();
+        videoBg.play();
+        draw();
+        playBtn.disabled = true;
+        recordBtn.disabled = false;
+        status.innerText = "العرض يعمل.. يمكنك البدء بالتسجيل لحفظ الفيديو";
+    };
 
-        recordBtn.onclick = () => {
-            chunks = [];
-            const stream = canvas.captureStream(30);
-            
-            // دمج صوت audio.mp3 في الفيديو المسجل
-            const audioTrack = audio.captureStream ? audio.captureStream() : audio.mozCaptureStream();
-            stream.addTrack(audioTrack.getAudioTracks()[0]);
+    recordBtn.onclick = () => {
+        chunks = [];
+        const stream = canvas.captureStream(30);
+        const audioStream = audio.captureStream ? audio.captureStream() : audio.mozCaptureStream();
+        stream.addTrack(audioStream.getAudioTracks()[0]);
 
-            recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
-            recorder.ondataavailable = e => chunks.push(e.data);
-            recorder.onstop = saveVideo;
-            
-            recorder.start();
-            recordBtn.disabled = true;
-            stopBtn.disabled = false;
-            status.innerText = "جاري التسجيل الآن.. سيتم دمج الكلمات والصوت..";
-        };
-
-        stopBtn.onclick = () => {
-            recorder.stop();
-            audio.pause();
-            status.innerText = "تم الإنتاج! جاري التحميل..";
-        };
-
-        function saveVideo() {
+        recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'Sidra_AlMaana_Production.webm';
+            a.download = 'فيديو_سدرة_المعنى.webm';
             a.click();
-        }
-    </script>
+        };
+        recorder.start();
+        recordBtn.innerText = "■ إيقاف وحفظ الفيديو";
+        recordBtn.onclick = () => recorder.stop();
+        status.innerText = "جاري التسجيل دمج الصوت والكلمات...";
+    };
+</script>
 </body>
 </html>
