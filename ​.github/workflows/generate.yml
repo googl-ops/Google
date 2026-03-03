@@ -1,0 +1,42 @@
+name: Generate Poetry Video
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install FFmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg libsndfile1
+    
+    - name: Install Python packages
+      run: pip install -r requirements.txt
+    
+    - name: Run visualizer
+      run: python visualizer.py
+    
+    - name: Upload video artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: poetry-video
+        path: poem_video.mp4
+        retention-days: 5
+    
+    - name: Check output
+      run: |
+        ls -lh poem_video.mp4 || echo "Video not created"
+
