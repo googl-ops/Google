@@ -18,10 +18,12 @@ jobs:
       with:
         python-version: '3.9'
     
-    - name: Install FFmpeg
+    - name: Install System Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y ffmpeg libsndfile1
+        sudo apt-get install -y ffmpeg libsndfile1 imagemagick fonts-noto-arabic
+        # تعديل سياسة الأمان في لينكس للسماح لـ ImageMagick بكتابة النصوص
+        sudo sed -i 's/domain="path" rights="none" pattern="@\*"/domain="path" rights="read|write" pattern="@\*"/g' /etc/ImageMagick-6/policy.xml
     
     - name: Install Python packages
       run: pip install -r requirements.txt
@@ -35,8 +37,3 @@ jobs:
         name: poetry-video
         path: poem_video.mp4
         retention-days: 5
-    
-    - name: Check output
-      run: |
-        ls -lh poem_video.mp4 || echo "Video not created"
-
