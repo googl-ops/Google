@@ -1,4 +1,4 @@
-import librosa
+import librosa  # تم تصحيح الحرف الأول هنا
 import numpy as np
 import moviepy.editor as mp
 from moviepy.video.fx.all import fadein, fadeout
@@ -13,46 +13,51 @@ class PoetryVisualizer:
         self.audio_path = audio_path
         self.lyrics_file = lyrics_file
         
-        print(f"تحميل الصوت: {audio_path}")
+        print(f"🎵 تحميل الصوت: {audio_path}")
         if not os.path.exists(audio_path):
-            raise FileNotFoundError(f"ملف الصوت غير موجود: {audio_path}")
+            raise FileNotFoundError(f"❌ ملف الصوت غير موجود: {audio_path}")
             
         self.y, self.sr = librosa.load(audio_path, sr=None)
         self.duration = librosa.get_duration(y=self.y, sr=self.sr)
-        print(f"المدة: {self.duration:.2f} ثانية")
+        print(f"✅ المدة: {self.duration:.2f} ثانية")
         
         self.width = 1920
         self.height = 1080
         
     def extract_features(self):
-        print("تحليل الصوت...")
+        print("📊 تحليل الصوت واستخراج الإيقاع...")
         rms = librosa.feature.rms(y=self.y)[0]
         tempo, beats = librosa.beat.beat_track(y=self.y, sr=self.sr)
         beat_times = librosa.frames_to_time(beats, sr=self.sr)
-        print(f"الإيقاع: {tempo:.1f} BPM")
+        print(f"🎼 الإيقاع المكتشف: {tempo:.1f} BPM")
         return rms, beat_times
     
     def create_background(self, time, intensity, is_beat):
-        img = Image.new('RGB', (self.width, self.height), (3, 3, 8))
+        # لون خلفية داكن مستوحى من ليل الصوفية
+        img = Image.new('RGB', (self.width, self.height), (3, 3, 12))
         draw = ImageDraw.Draw(img)
         
         for layer in range(4):
-            offset = time * (0.2 + layer * 0.08)
+            offset = time * (0.15 + layer * 0.05)
             for i in range(6):
                 angle = offset + i * (np.pi / 3)
-                x = self.width/2 + np.cos(angle) * (150 + layer*80) * (1 + intensity*0.5)
-                y = self.height/2 + np.sin(angle) * (150 + layer*80)*0.6 * (1 + intensity*0.3)
-                radius = int(80 + intensity*120 + layer*25)
-                color_val = int(8 + intensity*15)
-                color = (color_val//2, color_val//3, color_val//2+2)
-                draw.ellipse([x-radius, y-radius, x+radius, y+radius], fill=color)
+                radius_base = (180 + layer * 90) * (1 + intensity * 0.4)
+                x = self.width/2 + np.cos(angle) * radius_base
+                y = self.height/2 + np.sin(angle) * (radius_base * 0.6)
+                
+                # دوائر متوهجة مع الإيقاع
+                circle_radius = int(70 + intensity * 130 + layer * 20)
+                color_val = int(10 + intensity * 25)
+                # ألوان سماوية خافتة
+                color = (color_val//2, color_val//2, color_val + 10)
+                draw.ellipse([x-circle_radius, y-circle_radius, x+circle_radius, y+circle_radius], fill=color)
         
         if is_beat:
-            pulse = int(100*intensity)
-            draw.rectangle([15, 15, self.width-15, self.height-15], 
-                          outline=(pulse//3, pulse//4, pulse//2), width=2)
+            # نبضة عند كل ضربة دف
+            draw.rectangle([10, 10, self.width-10, self.height-10], 
+                          outline=(60, 60, 100), width=3)
         
-        return np.array(img.filter(ImageFilter.GaussianBlur(radius=3)))
+        return np.array(img.filter(ImageFilter.GaussianBlur(radius=5)))
     
     def prepare_arabic_text(self, text):
         try:
@@ -63,27 +68,28 @@ class PoetryVisualizer:
     
     def create_text_clip(self, text, start_time, duration, is_special):
         prepared = self.prepare_arabic_text(text)
-        font_size = 75 if is_special else 68
+        # استخدام خط متوفر في Linux/GitHub
+        font_name = 'DejaVu-Sans-Bold' 
+        font_size = 72 if is_special else 65
         
         clip = mp.TextClip(
             prepared,
             fontsize=font_size,
-            color='#F0F0F0',
-            font='Arial-Bold',
+            color='#E0E0E0',
+            font=font_name,
             method='caption',
-            size=(self.width-300, 350),
+            size=(self.width-400, 400),
             align='center',
             stroke_color='black',
-            stroke_width=4,
-            interline=-5
+            stroke_width=2
         ).set_start(start_time).set_duration(duration)
         
         clip = clip.set_position(('center', 0.65), relative=True)
-        clip = clip.fx(fadein, duration=0.6).fx(fadeout, duration=0.6)
+        clip = clip.fx(fadein, duration=0.8).fx(fadeout, duration=0.8)
         return clip
     
     def generate_video(self, output_path, fps=24):
-        print("إنشاء الفيديو...")
+        print("🎬 جاري معالجة المشاهد البصرية...")
         
         rms, beat_times = self.extract_features()
         num_frames = int(self.duration * fps)
@@ -97,79 +103,35 @@ class PoetryVisualizer:
             intensity = rms[idx] / np.max(rms) if np.max(rms) > 0 else 0
             is_beat = i in beat_frame_indices
             
-            frame = self.create_background(t, intensity, is_beat)
-            frames.append(frame)
-            
-            if i % 200 == 0:
-                print(f"التقدم: {i/num_frames*100:.1f}%")
+            frames.append(self.create_background(t, intensity, is_beat))
+            if i % 300 == 0:
+                print(f"⏳ تقدم الإنتاج: {i/num_frames*100:.1f}%")
         
-        print("تجميع الفيديو...")
         background = mp.ImageSequenceClip(frames, fps=fps)
         
         text_clips = []
         if self.lyrics_file and os.path.exists(self.lyrics_file):
-            print("تحميل الأبيات...")
             with open(self.lyrics_file, 'r', encoding='utf-8') as f:
                 verses = [line.strip() for line in f.readlines() if line.strip()]
             
-            print(f"عدد الأبيات: {len(verses)}")
             verse_duration = self.duration / len(verses)
-            
             for i, verse in enumerate(verses):
                 start = i * verse_duration
-                is_special = (i // 4) % 2 == 0
-                clip = self.create_text_clip(verse, start, verse_duration * 0.9, is_special)
-                text_clips.append(clip)
+                is_special = (i // 2) % 2 == 0
+                text_clips.append(self.create_text_clip(verse, start, verse_duration * 0.95, is_special))
         
-        if text_clips:
-            video = mp.CompositeVideoClip([background] + text_clips, size=(self.width, self.height))
-        else:
-            video = background
+        print("🎵 دمج الصوت وتصدير الملف النهائي...")
+        final = mp.CompositeVideoClip([background] + text_clips).set_audio(mp.AudioFileClip(self.audio_path))
         
-        print("إضافة الصوت...")
-        audio = mp.AudioFileClip(self.audio_path)
-        final = video.set_audio(audio)
-        
-        print(f"حفظ: {output_path}")
-        final.write_videofile(
-            output_path,
-            fps=fps,
-            codec='libx264',
-            audio_codec='aac',
-            temp_audiofile='temp-audio.m4a',
-            remove_temp=True,
-            threads=4,
-            verbose=False,
-            logger=None
-        )
-        
-        if os.path.exists(output_path):
-            size_mb = os.path.getsize(output_path) / (1024 * 1024)
-            print(f"تم بنجاح! الحجم: {size_mb:.2f} ميجابايت")
-        else:
-            print("فشل الحفظ!")
-        
-        return output_path
+        final.write_videofile(output_path, fps=fps, codec='libx264', audio_codec='aac', threads=4, logger=None)
+        print(f"✨ اكتمل الإبداع! الفيديو جاهز باسم: {output_path}")
 
 def main():
-    audio_file = "audio.mp3"
-    lyrics_file = "lyrics.txt"
-    output_file = "poem_video.mp4"
-    
-    print("التحقق من الملفات...")
-    if not os.path.exists(audio_file):
-        print(f"خطأ: لم يُعثر على {audio_file}")
-        print("الملفات المتوفرة:", os.listdir('.'))
-        sys.exit(1)
-    
     try:
-        visualizer = PoetryVisualizer(audio_file, lyrics_file)
-        visualizer.generate_video(output_file)
-        print("\nاكتمل بنجاح!")
+        viz = PoetryVisualizer("audio.mp3", "lyrics.txt")
+        viz.generate_video("poem_video.mp4")
     except Exception as e:
-        print(f"\nخطأ: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ خطأ: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
