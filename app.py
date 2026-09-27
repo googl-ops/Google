@@ -84,7 +84,7 @@ def run_universal_lab(exp_text, pdf_file):
     try:
         with st.spinner("🤖 جاري توليد المحاكاة..."):
             response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.8-flash',  # ← تم تحديث اسم النموذج هنا
                 contents=system_prompt,
             )
         response_text = response.text or ""
