@@ -41,10 +41,13 @@ def extract_text_from_pdf(pdf_file):
 
 
 def clean_code(code: str) -> str:
-    """تنظيف الكود من أسوار Markdown."""
+    """تنظيف الكود من أسوار Markdown وإصلاح الخصائص القديمة."""
     code = code.strip()
     code = re.sub(r"^```(?:python)?\s*", "", code)
     code = re.sub(r"\s*```$", "", code)
+    # إصلاح تلقائي للخاصية القديمة titlefont
+    code = code.replace("titlefont=", "title_font=")
+    code = code.replace("titlefont =", "title_font =")
     return code.strip()
 
 
@@ -79,6 +82,7 @@ def run_universal_lab(exp_text, pdf_file):
 7. أرجع الكود فقط داخل كتلة برمجية ```python ... ```.
 
 مهم جدًا: تأكد أن الكود لن يرمي أي استثناء، واستخدم أرقامًا فيزيائية واقعية.
+تحذير هام جدًا: لا تستخدم الخاصية القديمة `titlefont` في Plotly، واستخدم `title_font` أو `tickfont` بدلاً منها.
 """
 
     # قائمة النماذج البديلة في حال كان النموذج الأساسي مشغولاً (خطأ 503)
@@ -94,10 +98,10 @@ def run_universal_lab(exp_text, pdf_file):
                         model=model_name,
                         contents=system_prompt,
                     )
-                    break  # إذا نجح الاتصال، اخرج من الحلقة
+                    break
                 except Exception as e:
                     last_error = e
-                    continue  # جرب النموذج التالي في القائمة
+                    continue
 
         if response is None:
             st.error(f"❌ جميع النماذج مشغولة حالياً. يرجى المحاولة بعد قليل.")
