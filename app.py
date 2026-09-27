@@ -81,12 +81,28 @@ def run_universal_lab(exp_text, pdf_file):
 مهم جدًا: تأكد أن الكود لن يرمي أي استثناء، واستخدم أرقامًا فيزيائية واقعية.
 """
 
+    # قائمة النماذج البديلة في حال كان النموذج الأساسي مشغولاً (خطأ 503)
+    models_to_try = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash']
+    response = None
+    last_error = None
+
     try:
         with st.spinner("🤖 جاري توليد المحاكاة..."):
-            response = client.models.generate_content(
-                model='gemini-3.8-flash',  # ← تم تحديث اسم النموذج هنا
-                contents=system_prompt,
-            )
+            for model_name in models_to_try:
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=system_prompt,
+                    )
+                    break  # إذا نجح الاتصال، اخرج من الحلقة
+                except Exception as e:
+                    last_error = e
+                    continue  # جرب النموذج التالي في القائمة
+
+        if response is None:
+            st.error(f"❌ جميع النماذج مشغولة حالياً. يرجى المحاولة بعد قليل.")
+            return None, None
+
         response_text = response.text or ""
 
         code_match = re.search(r"```python(.*?)```", response_text, re.DOTALL)
