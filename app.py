@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-from google import genai
+from openai import OpenAI
 import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
@@ -13,15 +13,19 @@ import io
 
 # جلب المفتاح من Streamlit Secrets
 try:
-    api_key = st.secrets["GEMINI_API_KEY"]
+    api_key = st.secrets["GROQ_API_KEY"]
 except Exception:
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
 
 if not api_key:
-    st.error("⚠️ مفتاح API غير مُعد بشكل صحيح في إعدادات المعمل.")
+    st.error("⚠️ مفتاح Groq API غير مُعد بشكل صحيح في إعدادات المعمل.")
     st.stop()
 
-client = genai.Client(api_key=api_key.strip())
+# تهيئة عميل Groq (متوافق مع OpenAI SDK)
+client = OpenAI(
+    api_key=api_key.strip(),
+    base_url="https://api.groq.com/openai/v1"
+)
 
 
 def extract_text_from_pdf(pdf_file):
@@ -85,8 +89,13 @@ def run_universal_lab(exp_text, pdf_file):
 تحذير هام جدًا: لا تستخدم الخاصية القديمة `titlefont` في Plotly، واستخدم `title_font` أو `tickfont` بدلاً منها.
 """
 
-    # قائمة النماذج البديلة في حال كان النموذج الأساسي مشغولاً (خطأ 503)
-    models_to_try = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash']
+    # قائمة النماذج المتاحة على Groq (مرتبة من الأقوى إلى الأسرع)
+    models_to_try = [
+        'llama-3.3-70b-versatile',
+        'openai/gpt-oss-120b',
+        'qwen/qwen3-32b',
+        'llama-3.1-8b-instant',
+    ]
     response = None
     last_error = None
 
@@ -94,20 +103,25 @@ def run_universal_lab(exp_text, pdf_file):
         with st.spinner("🤖 جاري توليد المحاكاة..."):
             for model_name in models_to_try:
                 try:
-                    response = client.models.generate_content(
+                    response = client.chat.completions.create(
                         model=model_name,
-                        contents=system_prompt,
+                        messages=[
+                            {"role": "system", "content": "أنت مساعد خبير في كتابة أكواد Python للمحاكاة الفيزيائية."},
+                            {"role": "user", "content": system_prompt}
+                        ],
+                        temperature=0.3,
+                        max_tokens=4000,
                     )
-                    break
+                    break  # إذا نجح الاتصال، اخرج من الحلقة
                 except Exception as e:
                     last_error = e
-                    continue
+                    continue  # جرب النموذج التالي في القائمة
 
         if response is None:
             st.error(f"❌ جميع النماذج مشغولة حالياً. يرجى المحاولة بعد قليل.")
             return None, None
 
-        response_text = response.text or ""
+        response_text = response.choices[0].message.content or ""
 
         code_match = re.search(r"```python(.*?)```", response_text, re.DOTALL)
         code = code_match.group(1) if code_match else response_text
